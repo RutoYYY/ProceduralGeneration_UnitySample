@@ -88,8 +88,6 @@ public class SampleScene02Generator : MonoBehaviour
                     chunks[x, y] = new Chunk(chunkPos, chunkPos + new Vector2Int(chunkWidth - 1, chunkWidth - 1));
                     GenerateChunkObjects(chunks[x, y]);
                 }
-
-                Debug.Log(chunks[drawChunkDistance + 1, drawChunkDistance + 1].bottomLeft);
                 break;
             case 2:
                 for (int x = 0; x < chunks.GetLength(0); x++)
