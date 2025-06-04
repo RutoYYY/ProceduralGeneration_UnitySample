@@ -5,7 +5,7 @@ OcclusionCullingSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
   m_OcclusionBakeSettings:
-    smallestOccluder: 5
+    smallestOccluder: 1
     smallestHole: 0.25
     backfaceThreshold: 100
   m_SceneGUID: 00000000000000000000000000000000
@@ -473,7 +473,7 @@ GameObject:
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
+  m_StaticEditorFlags: 2147483647
   m_IsActive: 1
 --- !u!114 &2087816275
 MonoBehaviour:
@@ -492,7 +492,7 @@ MonoBehaviour:
   treeCollection: {fileID: 11400000, guid: fc213e4c132ea4d4a96ad052afdaa068, type: 2}
   maxHeight: 15
   frequency: 0.05
-  seed: 31
+  seed: 0
   drawChunkDistance: 3
   playerObj: {fileID: 926561572}
 --- !u!4 &2087816276

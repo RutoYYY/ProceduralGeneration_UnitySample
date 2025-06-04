@@ -1,9 +1,6 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
-
-#if UNITY_EDITOR
-using UnityEditor;
-#endif
 
 public class SampleScene02Generator : MonoBehaviour
 {
@@ -54,7 +51,7 @@ public class SampleScene02Generator : MonoBehaviour
             {
                 Vector2Int chunkPos = playerChunkPos + new Vector2Int((int)((x - drawChunkDistance) * chunkWidth), (int)((y - drawChunkDistance) * chunkWidth));
                 chunks[x, y] = new Chunk(chunkPos, chunkPos + new Vector2Int(chunkWidth - 1, chunkWidth - 1));
-                GenerateChunkObjects(chunks[x, y]);
+                StartCoroutine(GenerateChunkObjects(chunks[x, y]));
             }
         }
     }
@@ -70,7 +67,7 @@ public class SampleScene02Generator : MonoBehaviour
             case 1:
                 for (int y = 0; y < chunks.GetLength(1); y++)
                 {
-                    ClearChunkObjects(chunks[0, y]);
+                    StartCoroutine(ClearChunkObjects(chunks[0, y]));
                 }
 
                 for (int x = 0; x < chunks.GetLength(0) - 1; x++)
@@ -86,13 +83,13 @@ public class SampleScene02Generator : MonoBehaviour
                     int x = chunks.GetLength(0) - 1;
                     Vector2Int chunkPos = chunks[x - 1, y].bottomLeft + new Vector2Int(chunkWidth - 1, 0);
                     chunks[x, y] = new Chunk(chunkPos, chunkPos + new Vector2Int(chunkWidth - 1, chunkWidth - 1));
-                    GenerateChunkObjects(chunks[x, y]);
+                    StartCoroutine(GenerateChunkObjects(chunks[x, y]));
                 }
                 break;
             case 2:
                 for (int x = 0; x < chunks.GetLength(0); x++)
                 {
-                    ClearChunkObjects(chunks[x, chunks.GetLength(1) - 1]);
+                    StartCoroutine(ClearChunkObjects(chunks[x, chunks.GetLength(1) - 1]));
                 }
 
                 for (int x = 0; x < chunks.GetLength(0); x++)
@@ -108,13 +105,13 @@ public class SampleScene02Generator : MonoBehaviour
                     int y = 0;
                     Vector2Int chunkPos = chunks[x, y + 1].bottomLeft - new Vector2Int(0, chunkWidth - 1);
                     chunks[x, y] = new Chunk(chunkPos, chunkPos + new Vector2Int(chunkWidth - 1, chunkWidth - 1));
-                    GenerateChunkObjects(chunks[x, 0]);
+                    StartCoroutine(GenerateChunkObjects(chunks[x, 0]));
                 }
                 break;
             case 3:
                 for (int y = 0; y < chunks.GetLength(1); y++)
                 {
-                    ClearChunkObjects(chunks[chunks.GetLength(0) - 1, y]);
+                    StartCoroutine(ClearChunkObjects(chunks[chunks.GetLength(0) - 1, y]));
                 }
 
                 for (int x = chunks.GetLength(1) - 1; x > 0; x--)
@@ -130,13 +127,13 @@ public class SampleScene02Generator : MonoBehaviour
                     int x = 0;
                     Vector2Int chunkPos = chunks[x + 1, y].bottomLeft - new Vector2Int(chunkWidth - 1, 0);
                     chunks[x, y] = new Chunk(chunkPos, chunkPos + new Vector2Int(chunkWidth - 1, chunkWidth - 1));
-                    GenerateChunkObjects(chunks[0, y]);
+                    StartCoroutine(GenerateChunkObjects(chunks[0, y]));
                 }
                 break;
             case 4:
                 for (int x = 0; x < chunks.GetLength(0); x++)
                 {
-                    ClearChunkObjects(chunks[x, 0]);
+                    StartCoroutine(ClearChunkObjects(chunks[x, 0]));
                 }
 
                 for (int x = 0; x < chunks.GetLength(0); x++)
@@ -152,7 +149,7 @@ public class SampleScene02Generator : MonoBehaviour
                     int y = chunks.GetLength(1) - 1;
                     Vector2Int chunkPos = chunks[x, y - 1].bottomLeft + new Vector2Int(0, chunkWidth - 1);
                     chunks[x, y] = new Chunk(chunkPos, chunkPos + new Vector2Int(chunkWidth - 1, chunkWidth - 1));
-                    GenerateChunkObjects(chunks[x, chunks.GetLength(1) - 1]);
+                    StartCoroutine(GenerateChunkObjects(chunks[x, chunks.GetLength(1) - 1]));
                 }
                 break;
             default:
@@ -160,8 +157,10 @@ public class SampleScene02Generator : MonoBehaviour
         }
     }
 
-    public void GenerateChunkObjects(Chunk chunk)
+    private IEnumerator GenerateChunkObjects(Chunk chunk)
     {
+        Dictionary<Material, List<CombineInstance>> materialCombineInstances = new Dictionary<Material, List<CombineInstance>>();
+
         for (int x = chunk.bottomLeft.x; x <= chunk.topRight.x; x++)
         {
             for (int z = chunk.bottomLeft.y; z <= chunk.topRight.y; z++)
@@ -195,12 +194,49 @@ public class SampleScene02Generator : MonoBehaviour
                     generateObj = cubeCollection.Objects[2];
                 }
 
-                // キューブ設置
-                GameObject newObj = InstantiateObject(generateObj, cubePos);
-                chunk.objects.Add(newObj);                                                        // オブジェクトを格納
+                Mesh mesh = generateObj.GetComponent<MeshFilter>().sharedMesh;
+                Material mat = generateObj.GetComponent<Renderer>().sharedMaterial;
+
+                if (!materialCombineInstances.ContainsKey(mat))
+                    materialCombineInstances[mat] = new List<CombineInstance>();
+
+                CombineInstance ci = new CombineInstance();
+                ci.mesh = mesh;
+                ci.transform = Matrix4x4.TRS(cubePos, Quaternion.identity, Vector3.one);
+                materialCombineInstances[mat].Add(ci);
             }
         }
+
+        foreach (var pair in materialCombineInstances)
+        {
+            CombineMeshes(chunk, pair.Key, pair.Value.ToArray());
+        }
+
+        yield break;
     }
+
+    void CombineMeshes(Chunk chunk, Material material, CombineInstance[] combine)
+    {
+        Mesh combinedMesh = new Mesh();
+        combinedMesh.CombineMeshes(combine);
+
+        GameObject newObj = new GameObject($"{chunk.bottomLeft.x}_{chunk.bottomLeft.y}");
+        newObj.transform.parent = transform;
+        newObj.transform.position = Vector3.zero;
+
+        var meshFilter = newObj.AddComponent<MeshFilter>();
+        meshFilter.sharedMesh = combinedMesh;
+
+        var meshRenderer = newObj.AddComponent<MeshRenderer>();
+        meshRenderer.sharedMaterial = material;
+
+        newObj.AddComponent<MeshCollider>();
+
+        newObj.isStatic = true;
+
+        chunk.objects.Add(newObj);
+    }
+
 
     // 確率でオブジェクトを生成する
     private bool TrySpawn(float probability, GameObject[] gameObjects, Vector3 position, Chunk chunk)
@@ -236,42 +272,16 @@ public class SampleScene02Generator : MonoBehaviour
         return newObj;
     }
 
-    public void ClearChunkObjects(Chunk chunk)
+    private IEnumerator ClearChunkObjects(Chunk chunk)
     {
         foreach (var obj in chunk.objects)
         {
             if (obj == null) continue;
 
-#if UNITY_EDITOR
-            // ループ時に削除してしまうとエラーが発生するので、次のフレームで呼び出す
-            EditorApplication.delayCall += () =>
-            {
-                DestroyImmediate(obj);
-            };
-#else
-            // Destroy関数はフレームの終了時に行うので問題なし
             Destroy(obj);
-#endif
         }
-    }
 
-    [ContextMenu("クリア")]
-    public void ClearAllObject()
-    {
-        foreach (Transform obj in transform)
-        {
-
-#if UNITY_EDITOR
-            // ループ時に削除してしまうとエラーが発生するので、次のフレームで呼び出す
-            EditorApplication.delayCall += () =>
-            {
-                DestroyImmediate(obj.gameObject);
-            };
-#else
-            // Destroy関数はフレームの終了時に行うので問題なし
-            Destroy(obj);
-#endif
-        }
+        yield break;
     }
 }
 
