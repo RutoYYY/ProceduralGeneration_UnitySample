@@ -38,6 +38,24 @@ public class SampleScene02Generator : MonoBehaviour
     void Update()
     {
         CheckPlayerOutsideChunk();
+
+        if (Input.GetKeyDown(KeyCode.R))
+        {
+            seed = seed + 1;
+            RegenerateChunks();
+        }
+    }
+
+    private void RegenerateChunks()
+    {
+        // 既存のオブジェクトを削除
+        foreach (var chunk in chunks)
+        {
+            StartCoroutine(ClearChunkObjects(chunk));
+        }
+
+        // チャンクを再生成
+        InitChunks();
     }
 
     private void InitChunks()
